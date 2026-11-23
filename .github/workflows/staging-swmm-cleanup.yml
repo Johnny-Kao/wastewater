@@ -1,0 +1,35 @@
+name: Staging SWMM legacy cleanup
+on:
+  push:
+    branches:
+      - staging/swmm-legacy-field-cleanup-20261123
+    paths:
+      - scripts/staging_swmm_legacy_cleanup.py
+      - .github/workflows/staging-swmm-cleanup.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Verify and apply precisely 14 cleanup references
+        run: python3 scripts/staging_swmm_legacy_cleanup.py
+      - name: Check Python and diff whitespace
+        run: |
+          python3 -m py_compile plugin/teksi_wastewater/processing_provider/swmm_import_results.py
+          git diff --check
+          git diff --stat
+          git diff -- plugin/teksi_wastewater/processing_provider/swmm_import_results.py docs/en/tww_swmm/Import-Results.rst | head -90
+      - name: Save cleanup commit to staging fork only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add project/teksi_wastewater.qgs plugin/teksi_wastewater/processing_provider/swmm_import_results.py docs/en/tww_swmm/Import-Results.rst
+          git commit -m "Clean obsolete SWMM hydraulic field references [skip ci]"
+          git push origin HEAD:staging/swmm-legacy-field-cleanup-20261123
