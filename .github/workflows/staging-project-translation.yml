@@ -42,12 +42,9 @@ jobs:
       - name: Start Docker compose
         run: |
           docker compose up --build -d
-          until docker compose exec db pg_isready -U postgres; do
-            echo "Waiting for PostgreSQL to be ready..."
-            sleep 2
-          done
-          docker compose exec db createdb -U postgres ${DB_NAME}
-          docker compose run pum -vvv -p ${PGSERVICE} -d datamodel install -p SRID 2056
+          timeout 120 bash -c 'until docker compose exec -T db pg_isready -h 127.0.0.1 -U postgres; do sleep 2; done'
+          docker compose exec -T db createdb -U postgres ${DB_NAME}
+          docker compose run --rm pum -vvv -p ${PGSERVICE} -d datamodel install -p SRID 2056
 
       - name: Translate (create sources)
         run: docker compose exec qgis sh -c "xvfb-run /usr/src/project/scripts/project-translation-create-source.py /usr/src/project/${QGS_PROJECT_FILE}.qgs"
